@@ -7,6 +7,8 @@ describe('VeilModule (Stellar Wallets Kit adapter)', () => {
   let dapp: any;
   let page: any;
 
+  const originalOpen = window.open;
+
   beforeEach(() => {
     listeners = new Set();
     received = [];
@@ -22,23 +24,20 @@ describe('VeilModule (Stellar Wallets Kit adapter)', () => {
     };
     dapp = {
       opened: 0,
-      outerWidth: 1440,
-      outerHeight: 900,
-      screenX: 0,
-      screenY: 0,
-      screen: { width: 1440, height: 900 },
-      addEventListener(t: string, fn: (e: any) => void) {
-        if (t === 'message') listeners.add(fn);
-      },
-      removeEventListener(_t: string, fn: (e: any) => void) {
-        listeners.delete(fn);
-      },
       open() {
         dapp.opened += 1;
         popup.closed = false;
         return popup;
       },
     };
+    (window as any).open = dapp.open;
+    window.addEventListener = ((t: string, fn: any) => {
+      if (t === 'message') listeners.add(fn);
+    }) as any;
+    window.removeEventListener = ((_t: string, fn: any) => {
+      listeners.delete(fn);
+    }) as any;
+
     page = {
       received,
       last: () => received[received.length - 1],
@@ -55,12 +54,11 @@ describe('VeilModule (Stellar Wallets Kit adapter)', () => {
         this.post({ veil: 1, id, type: 'error', error });
       },
     };
-
-    (global as any).window = dapp;
   });
 
   afterEach(() => {
-    delete (global as any).window.veil;
+    delete (window as any).veil;
+    window.open = originalOpen;
   });
 
   const ACCOUNT = { address: 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' };
