@@ -1,4 +1,4 @@
-import { VeilModule, type VeilProvider, NETWORKS } from '../stellarWalletsKit';
+import { VeilModule, type VeilProvider, STELLAR_NETWORKS } from '../stellarWalletsKit';
 
 describe('VeilModule (Stellar Wallets Kit adapter)', () => {
   let listeners: Set<(e: any) => void>;
@@ -86,7 +86,7 @@ describe('VeilModule (Stellar Wallets Kit adapter)', () => {
       signAuthEntry: () => Promise.resolve({ signedAuthEntry: 'c2ln', signerAddress: ACCOUNT.address }),
       signMessage: () => Promise.resolve({ signedMessage: 'bXNn', signerAddress: ACCOUNT.address }),
       signAndSubmitTransaction: () => Promise.resolve({ status: 'success' }),
-      getNetwork: () => Promise.resolve({ network: 'TESTNET', networkPassphrase: NETWORKS.TESTNET }),
+      getNetwork: () => Promise.resolve({ network: 'TESTNET', networkPassphrase: STELLAR_NETWORKS.TESTNET }),
     };
 
     (global as any).window.veil = mockProvider;
@@ -100,7 +100,7 @@ describe('VeilModule (Stellar Wallets Kit adapter)', () => {
     expect(called).toBe(true);
     expect(dapp.opened).toBe(0);
 
-    const txRes = await mod.signTransaction('AAAA', { networkPassphrase: NETWORKS.TESTNET });
+    const txRes = await mod.signTransaction('AAAA', { networkPassphrase: STELLAR_NETWORKS.TESTNET });
     expect(txRes).toEqual({ signedTxXdr: SIGNED.blob, signerAddress: ACCOUNT.address });
 
     const authRes = await mod.signAuthEntry('AAAACQ');
@@ -113,11 +113,11 @@ describe('VeilModule (Stellar Wallets Kit adapter)', () => {
     expect(submitRes).toEqual({ status: 'success' });
 
     const netRes = await mod.getNetwork();
-    expect(netRes).toEqual({ network: 'TESTNET', networkPassphrase: NETWORKS.TESTNET });
+    expect(netRes).toEqual({ network: 'TESTNET', networkPassphrase: STELLAR_NETWORKS.TESTNET });
   });
 
   test('popup flow: getAddress connects via popup', async () => {
-    const mod = new VeilModule({ network: NETWORKS.TESTNET });
+    const mod = new VeilModule({ network: STELLAR_NETWORKS.TESTNET });
     const pending = mod.getAddress();
     expect(dapp.opened).toBe(1);
 
@@ -131,7 +131,7 @@ describe('VeilModule (Stellar Wallets Kit adapter)', () => {
 
   test('popup flow: signTransaction communicates with popup', async () => {
     const mod = new VeilModule();
-    const pending = mod.signTransaction('AAAA', { networkPassphrase: NETWORKS.PUBLIC, address: ACCOUNT.address });
+    const pending = mod.signTransaction('AAAA', { networkPassphrase: STELLAR_NETWORKS.PUBLIC, address: ACCOUNT.address });
 
     page.ready();
     expect(page.last().method).toBe('sign');

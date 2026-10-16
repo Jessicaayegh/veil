@@ -63,16 +63,16 @@ export interface VeilProvider {
 export const VEIL_ICON =
   'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NiA5NiIgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IlZlaWwiPgogIDxyZWN0IHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiIgcng9IjIyIiBmaWxsPSIjMEYwRjBGIi8+CiAgPHJlY3QgeD0iMjIiIHk9IjI2IiB3aWR0aD0iNTIiIGhlaWdodD0iMTIiIHJ4PSI2IiBmaWxsPSIjRkREQTI0Ii8+CiAgPHJlY3QgeD0iMjgiIHk9IjQ0IiB3aWR0aD0iNDAiIGhlaWdodD0iMTIiIHJ4PSI2IiBmaWxsPSIjRkREQTI0IiBvcGFjaXR5PSIwLjYyIi8+CiAgPHJlY3QgeD0iMzQiIHk9IjYyIiB3aWR0aD0iMjgiIGhlaWdodD0iMTIiIHJ4PSI2IiBmaWxsPSIjRkREQTI0IiBvcGFjaXR5PSIwLjM0Ii8+Cjwvc3ZnPgo=';
 
-export const NETWORKS = {
+export const STELLAR_NETWORKS = {
   PUBLIC: 'Public Global Stellar Network ; September 2015',
   TESTNET: 'Test SDF Network ; September 2015',
   FUTURENET: 'Test SDF Future Network ; October 2022',
 };
 
 const VEIL_NETWORKS: Record<string, { id: string; name: string }> = {
-  [NETWORKS.PUBLIC]: { id: 'mainnet', name: 'PUBLIC' },
-  [NETWORKS.TESTNET]: { id: 'testnet', name: 'TESTNET' },
-  [NETWORKS.FUTURENET]: { id: 'futurenet', name: 'FUTURENET' },
+  [STELLAR_NETWORKS.PUBLIC]: { id: 'mainnet', name: 'PUBLIC' },
+  [STELLAR_NETWORKS.TESTNET]: { id: 'testnet', name: 'TESTNET' },
+  [STELLAR_NETWORKS.FUTURENET]: { id: 'futurenet', name: 'FUTURENET' },
 };
 
 const VEIL_UNSENT = ['offline', 'unsent', 'locked', 'moved', 'handOver'];
@@ -90,7 +90,7 @@ export class VeilModule implements ModuleInterface {
   readonly productIcon: string = VEIL_ICON;
 
   private address: string | null = null;
-  private passphrase: string = NETWORKS.PUBLIC;
+  private passphrase: string = STELLAR_NETWORKS.PUBLIC;
   private readonly page: { url?: string; timeoutMs?: number };
 
   constructor(params: { network?: string; url?: string; timeoutMs?: number } = {}) {
