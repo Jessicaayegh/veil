@@ -34,6 +34,8 @@ import {
 import { WalletConnectApprovalModal } from '../components/WalletConnectApprovalModal';
 import { WalletProvider } from '../components/WalletProvider';
 import { BootnodeBanner } from '../components/BootnodeBanner';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { initSentry } from '../lib/sentry';
 
 // Hold the native splash screen until the brand fonts are ready, so the UI
 // never flashes a system font on first paint.
@@ -89,6 +91,9 @@ export default function RootLayout() {
     // Check for payments while the app is closed, so a notification does not
     // wait for the next time the user opens it.
     void registerActivityCheck();
+    // Crash reporting is opt-in and silent without a DSN (#442); this picks up
+    // the stored choice, or does nothing on a build that was never configured.
+    void initSentry();
   }, []);
 
   // Keep the splash screen up (render nothing) until the fonts resolve — either
@@ -107,6 +112,12 @@ export default function RootLayout() {
     // reaches the bottom of the display even if the native window beneath is
     // still light, which is belt-and-braces alongside the SystemUI call above.
     <GestureHandlerRootView style={[styles.root, { backgroundColor: colors.background }]}>
+      {/* The app's global error boundary (#442). Outermost stateful component
+          on purpose: it sits above the providers as well as the navigator, so a
+          throw from either becomes the fallback instead of a white screen — and
+          nothing inside it is near a signing path, so the fallback can promise
+          the wallet is untouched. */}
+      <ErrorBoundary>
       <SafeAreaProvider>
         {/* The app is edge-to-edge, which means Android no longer resizes the
             window when the keyboard opens — so React Native's own
@@ -149,6 +160,7 @@ export default function RootLayout() {
         </BottomSheetModalProvider>
         </KeyboardProvider>
       </SafeAreaProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }
