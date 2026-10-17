@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  type LayoutChangeEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -48,6 +49,7 @@ import {
   type ProposalStatus,
 } from '../../lib/agentMessages';
 import { useNetwork } from '../../hooks/useNetwork';
+import { threadBottomInset } from '../../lib/agentComposer';
 import { historyFromMessages, sendAgentMessage, type AgentReply } from '../../lib/agentClient';
 import { signPayloadWithPasskey } from '../../lib/passkey';
 import { getPasskeyId, getSignerSecret, getWalletAddress } from '../../lib/walletStore';
@@ -87,6 +89,17 @@ export default function AgentScreen() {
   // of the conversation it belongs to.
   const keyboardHeight = useKeyboardState((state) => state.height);
   const liftedBy = Math.max(0, keyboardHeight - insets.bottom);
+  // The composer as it is actually drawn. It is anchored over the thread rather
+  // than taking a share of the column, so the thread owes it its full height —
+  // which is measured here, never assumed. The chips and the input card both
+  // grow with the system font size and with the lines typed into the field, so
+  // a constant clears the composer on the device it was measured on and lands
+  // on top of it on the next one (#1039).
+  const [composerHeight, setComposerHeight] = useState(0);
+  const handleComposerLayout = useCallback((event: LayoutChangeEvent) => {
+    const { height } = event.nativeEvent.layout;
+    setComposerHeight((previous) => (Math.abs(previous - height) < 0.5 ? previous : height));
+  }, []);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   // Subscribed rather than read once at module load: the network is a runtime
@@ -325,11 +338,20 @@ export default function AgentScreen() {
             space; the view is bounded so the thread cannot grow past its
             share and shove the composer off the bottom of the screen. With
             only the second, the keyboard looked like it was still covering
-            the composer when in fact the composer had been pushed under it. */}
+            the composer when in fact the composer had been pushed under it.
+
+            The viewport runs the full height of the screen, *behind* the
+            composer, so the content's bottom padding is what keeps the last
+            message visible: it reserves the composer's measured height, the
+            keyboard's lift, and a standing gap — see `threadBottomInset`. */}
         <ScrollView showsVerticalScrollIndicator={false}
           ref={scrollRef}
           style={styles.flex}
-          contentContainerStyle={[styles.thread, { paddingBottom: 16 + liftedBy }]}
+          testID="agent-thread"
+          contentContainerStyle={[
+            styles.thread,
+            { paddingBottom: threadBottomInset({ composerHeight, keyboardLift: liftedBy }) },
+          ]}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
           keyboardShouldPersistTaps="handled"
         >
@@ -373,9 +395,20 @@ export default function AgentScreen() {
             `opened: insets.bottom` cancels a double count: the shell already
             holds the composer that far off the bottom of the screen, and the
             keyboard covers that strip too, so lifting by the full keyboard
-            height would leave a gap exactly one inset tall. */}
-        <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
-        <View style={styles.composer}>
+            height would leave a gap exactly one inset tall.
+
+            `composerAnchor` takes the composer out of the column's flow, so
+            the thread can run the full height of the screen and state its own
+            clearance (`threadBottomInset`, measured from this composer's real
+            height) instead of trusting two boxes to have negotiated correctly.
+            That clearance is what the last message clears with the keyboard
+            closed (#1039); the lift above only ever adds to it. */}
+        <KeyboardStickyView
+          offset={{ closed: 0, opened: insets.bottom }}
+          style={styles.composerAnchor}
+          testID="agent-composer-anchor"
+        >
+        <View style={styles.composer} onLayout={handleComposerLayout} testID="agent-composer">
           <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
             {SUGGESTIONS.map((suggestion) => (
               <Pressable
@@ -696,7 +729,20 @@ const createStyles = (colors: ThemeColors) =>
     thread: {
       flexGrow: 1,
       gap: 12,
-      paddingBottom: 16,
+      // No paddingBottom here on purpose: the thread's bottom inset is a
+      // measured figure (composer height + keyboard lift + standing gap),
+      // computed per render — see `threadBottomInset` in lib/agentComposer.ts.
+    },
+    // The composer does not take a share of the column: it is pinned to the
+    // bottom of the screen and the thread reserves its measured height
+    // instead. Anchoring is what makes the clearance one figure that can be
+    // stated and pinned by a test, rather than a resting-case bug where the
+    // last message drew under the chips and the input (#1039).
+    composerAnchor: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
     },
     row: {
       flexDirection: 'row',
