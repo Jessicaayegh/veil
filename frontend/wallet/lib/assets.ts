@@ -31,20 +31,7 @@ export const AQUA_MAINNET_ISSUER = 'GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5P
 export const USDT0_MAINNET_ISSUER = 'GATISXX6BZ6NC7IKQBY37CJD4SOZL3CYZJWXEDG6JVIY4WBS6KXJHN6Q'
 export const USDT0_MAINNET_SAC = 'CBSJZEIO5C7KC2SF3MKSNXXJSW5G3VTNBX4ATMKUI3B2MR4JKM4R26YF'
 
-export const EURC_MAINNET_ISSUER = 'GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2'
-export const AQUA_MAINNET_ISSUER = 'GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA'
-
 export const ASSET_REGISTRY: Record<string, RegisteredAsset> = {
-  EURC: {
-    code: 'EURC',
-    issuer: EURC_MAINNET_ISSUER,
-    name: 'Euro Coin',
-    issuerName: 'Circle',
-    homeDomain: 'circle.com',
-    // Verified 2026-10-04: this issuer's Horizon home_domain is circle.com, the
-    // same domain the USDC issuer publishes. Circle serves no stellar.toml at
-    // that path (404), so the registry pin is the verification, exactly as it
-    // is for USDC.
   USDC: {
     code: 'USDC',
     issuer: USDC_MAINNET_ISSUER,
@@ -70,6 +57,10 @@ export const ASSET_REGISTRY: Record<string, RegisteredAsset> = {
     name: 'EUR Coin',
     issuerName: 'Circle',
     homeDomain: 'circle.com',
+    // Verified 2026-10-04: this issuer's Horizon home_domain is circle.com, the
+    // same domain the USDC issuer publishes. Circle serves no stellar.toml at
+    // that path (404), so the registry pin is the verification, exactly as it
+    // is for USDC.
     network: 'mainnet',
     kind: 'stablecoin',
     reserveXlm: 0.5,
@@ -90,8 +81,6 @@ export const ASSET_REGISTRY: Record<string, RegisteredAsset> = {
     // a hardcoded rate, and it must never get one.
     network: 'mainnet',
     kind: 'governance',
-    network: 'mainnet',
-    kind: 'equity',
     reserveXlm: 0.5,
   },
   USDY: {
