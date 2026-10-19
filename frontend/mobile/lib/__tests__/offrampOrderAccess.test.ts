@@ -22,6 +22,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 const ORDER_ID = 'ofr_3kQpV8nZr2LmXy7wTb4Dse';
+// gitguardian:ignore=true — inert test fixture, no such order or token exists
 const TOKEN = 'oft_9fK2mQ7xW4zRb8NvYc3HdJ5sLpTg1AeUo6iXr0MnB2w';
 /** The key the module owns. Hard-coded because the module is required per-test. */
 const ACTIVE_ORDER_KEY = 'veil_offramp_active_order';
