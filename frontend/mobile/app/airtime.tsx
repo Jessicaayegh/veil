@@ -47,6 +47,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
+import * as Clipboard from 'expo-clipboard';
 import { ContactIcon } from '../components/icons';
 import { pickContactNumber } from '../lib/pickContact';
 import { FlowHeader } from '../components/FlowHeader';
@@ -73,6 +74,14 @@ import {
   getCategoryDeclaration,
   validateIdentifierBeforeConfirm,
 } from '../lib/billCategories';
+import { RecentBillOrders } from '../components/RecentBillOrders';
+import {
+  getBillOrders,
+  recheckPendingBillOrders,
+  saveBillOrder,
+  updateBillOrderStatus,
+  type PersistedBillOrder,
+} from '../lib/billOrders';
 
 type Step = 'form' | 'confirm' | 'paying' | 'done' | 'failed';
 
@@ -135,6 +144,10 @@ export default function AirtimeScreen() {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [payHash, setPayHash] = useState<string | null>(null);
   const [accountHolderName, setAccountHolderName] = useState<string | null>(null);
+  const [prepaidToken, setPrepaidToken] = useState<string | null>(null);
+  const [tokenCopied, setTokenCopied] = useState(false);
+  const [recentOrders, setRecentOrders] = useState<PersistedBillOrder[]>([]);
+  const [isRechecking, setIsRechecking] = useState(false);
   // Shown before the passkey, never after. A charge a user only finds in
   // their history is a surprise, not a fee — and `previewSpendFee` decides it
   // exactly the way `spendAsset` will, so the number shown is the number
@@ -145,6 +158,33 @@ export default function AirtimeScreen() {
   const [waitingForPasskey, setWaitingForPasskey] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const refreshOrders = useCallback(async () => {
+    try {
+      const orders = await getBillOrders();
+      setRecentOrders(orders);
+    } catch (err) {
+      console.warn('[airtime] failed to load recent bill orders:', errorMessage(err));
+    }
+  }, []);
+
+  const handleRecheckOrders = useCallback(async () => {
+    setIsRechecking(true);
+    try {
+      const updated = await recheckPendingBillOrders();
+      setRecentOrders(updated);
+    } catch (err) {
+      console.warn('[airtime] recheck pending bill orders failed:', errorMessage(err));
+    } finally {
+      setIsRechecking(false);
+    }
+  }, []);
+
+  // Re-check non-terminal orders on open so pending orders resolve rather
+  // than staying pending forever.
+  useEffect(() => {
+    void handleRecheckOrders();
+  }, [handleRecheckOrders]);
 
   const detected = detectNetwork(phone);
   // A detected network wins until the user overrides it. Ported numbers are why
@@ -195,8 +235,18 @@ export default function AirtimeScreen() {
     const check = async () => {
       try {
         const s = await getBillStatus(customerRef, orderId);
-        if (/complete|success|delivered/i.test(s.status)) setStep('done');
-        if (/fail|refund|revers/i.test(s.status)) setStep('failed');
+        const token = s.token ?? s.prepaidToken;
+        if (/complete|success|delivered/i.test(s.status)) {
+          setStep('done');
+          if (token) setPrepaidToken(token);
+          await updateBillOrderStatus(orderId, s.status, token);
+          void refreshOrders();
+        }
+        if (/fail|refund|revers/i.test(s.status)) {
+          setStep('failed');
+          await updateBillOrderStatus(orderId, s.status);
+          void refreshOrders();
+        }
       } catch (err) {
         // Silent *to the user*: a failed poll is nothing they can act on, and
         // the payment has already left, so an error here would read as if it
@@ -212,7 +262,7 @@ export default function AirtimeScreen() {
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = null;
     };
-  }, [orderId, customerRef, step, payHash]);
+  }, [orderId, customerRef, step, payHash, refreshOrders]);
 
   const ngn = Number(amountNGN.replace(/[^\d]/g, '')) || 0;
   const code = coin.toUpperCase();
@@ -312,6 +362,23 @@ export default function AirtimeScreen() {
       setOrderId(order.id);
       setSpent(amountStableCoin);
 
+      // Persist the bill order locally so it survives app restarts and re-queries
+      await saveBillOrder({
+        orderId: order.id,
+        customerRef,
+        category: 'airtime',
+        provider,
+        identifier: phoneDigits,
+        amount: ngn,
+        amountCrypto: amountStableCoin,
+        asset: coin,
+        status: 'pending',
+        time: Date.now(),
+      }).catch((saveErr) => {
+        console.warn('[airtime] failed to persist bill order:', errorMessage(saveErr));
+      });
+      void refreshOrders();
+
       setWaitingForPasskey(true);
       const issuer = coin === 'usdc' ? getAssetIssuer('USDC', 'mainnet') : null;
       const hash = await spendAsset({
@@ -338,6 +405,22 @@ export default function AirtimeScreen() {
   }, [customerRef, refundAddress, rate, ngn, provider, phoneDigits, coin, wallet.deploy, code]);
 
   const stepNumber = step === 'form' ? 1 : 2;
+
+  const tokenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (tokenTimeoutRef.current) clearTimeout(tokenTimeoutRef.current);
+    };
+  }, []);
+
+  const copySuccessToken = useCallback(async () => {
+    if (!prepaidToken) return;
+    await Clipboard.setStringAsync(prepaidToken);
+    setTokenCopied(true);
+    if (tokenTimeoutRef.current) clearTimeout(tokenTimeoutRef.current);
+    tokenTimeoutRef.current = setTimeout(() => setTokenCopied(false), 2500);
+  }, [prepaidToken]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -502,6 +585,12 @@ export default function AirtimeScreen() {
             >
               <Text style={styles.primaryText}>Continue</Text>
             </Pressable>
+
+            <RecentBillOrders
+              orders={recentOrders}
+              onRecheck={handleRecheckOrders}
+              isRechecking={isRechecking}
+            />
           </>
         )}
 
@@ -633,6 +722,25 @@ export default function AirtimeScreen() {
               ) : null}
             </View>
 
+            {prepaidToken ? (
+              <View style={styles.card} testID="success-prepaid-token-card">
+                <Text style={styles.label}>PREPAID TOKEN</Text>
+                <Text style={styles.tokenDisplay} selectable>
+                  {prepaidToken}
+                </Text>
+                <Pressable
+                  onPress={() => void copySuccessToken()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Copy prepaid token"
+                  style={({ pressed }) => [styles.copyTokenBtn, pressed && styles.pressed]}
+                >
+                  <Text style={styles.copyTokenText}>
+                    {tokenCopied ? 'Copied to clipboard' : 'Copy Token'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+
             <Pressable
               onPress={() => {
                 setStep('form');
@@ -640,7 +748,10 @@ export default function AirtimeScreen() {
                 setOrderId(null);
                 setPayHash(null);
                 setSpent(null);
+                setPrepaidToken(null);
+                setTokenCopied(false);
                 void loadRate();
+                void refreshOrders();
               }}
               style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
             >
@@ -862,6 +973,29 @@ function createStyles(colors: ThemeColors) {
     },
     secondaryText: { color: colors.textPrimary, fontFamily: fontFamily.bodySemiBold, fontSize: 16 },
     linkText: { color: colors.accent, fontFamily: fontFamily.body, fontSize: 13, paddingTop: 6, textAlign: 'center' },
+
+    tokenDisplay: {
+      color: colors.accent,
+      fontFamily: fontFamily.mono,
+      fontSize: 16,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+      marginVertical: 6,
+    },
+    copyTokenBtn: {
+      backgroundColor: colors.surfaceSm,
+      borderColor: colors.border,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderRadius: 8,
+      paddingVertical: 10,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    copyTokenText: {
+      color: colors.textPrimary,
+      fontFamily: fontFamily.bodySemiBold,
+      fontSize: 13,
+    },
 
     disabled: { opacity: 0.4 },
     pressed: { opacity: 0.85 },

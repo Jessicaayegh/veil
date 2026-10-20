@@ -542,6 +542,8 @@ export interface BillStatus {
   wallet: string
   description: string
   stale?: boolean
+  token?: string
+  prepaidToken?: string
 }
 
 export function getBillStatus(customerRef: string, orderId: string): Promise<BillStatus> {

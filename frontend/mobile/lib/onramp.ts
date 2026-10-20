@@ -540,12 +540,31 @@ export interface BillStatus {
   wallet: string;
   description: string;
   stale?: boolean;
+  token?: string;
+  prepaidToken?: string;
 }
 
 export function getBillStatus(customerRef: string, orderId: string): Promise<BillStatus> {
   return call<BillStatus>(
     `/ngn/bills/${encodeURIComponent(orderId)}?customerRef=${encodeURIComponent(customerRef)}`,
   );
+}
+
+export type BillTerminalOutcome = 'done' | 'failed' | 'pending';
+
+/**
+ * Classifies a bill order status into terminal or in-flight states.
+ *
+ * Success statuses: 'complete', 'completed', 'success', 'delivered'.
+ * Failure statuses: 'failed', 'refunded', 'reversed', 'cancelled'.
+ * All other / unrecognized statuses default to 'pending' so requerying
+ * can settle them rather than assuming a false failure.
+ */
+export function classifyBillStatus(status: string): BillTerminalOutcome {
+  const s = status.trim().toLowerCase();
+  if (/complete|success|delivered/.test(s)) return 'done';
+  if (/fail|refund|revers|cancel/.test(s)) return 'failed';
+  return 'pending';
 }
 
 export interface BillCustomerLookup {
