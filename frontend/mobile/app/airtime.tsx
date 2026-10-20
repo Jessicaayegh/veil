@@ -69,6 +69,10 @@ import {
   payBill,
   type NairaCoin,
 } from '../lib/onramp';
+import {
+  getCategoryDeclaration,
+  validateIdentifierBeforeConfirm,
+} from '../lib/billCategories';
 
 type Step = 'form' | 'confirm' | 'paying' | 'done' | 'failed';
 
@@ -130,6 +134,7 @@ export default function AirtimeScreen() {
 
   const [orderId, setOrderId] = useState<string | null>(null);
   const [payHash, setPayHash] = useState<string | null>(null);
+  const [accountHolderName, setAccountHolderName] = useState<string | null>(null);
   // Shown before the passkey, never after. A charge a user only finds in
   // their history is a surprise, not a fee — and `previewSpendFee` decides it
   // exactly the way `spendAsset` will, so the number shown is the number
@@ -254,6 +259,20 @@ export default function AirtimeScreen() {
   }, []);
 
   const continueFromForm = useCallback(async () => {
+    // Validate before the confirm step, naming the specific problem
+    const validation = await validateIdentifierBeforeConfirm('airtime', phone, { provider });
+    if (!validation.valid) {
+      setError(validation.error ?? 'Please check the phone number.');
+      return;
+    }
+    setError(null);
+    if (validation.accountHolderName) {
+      setAccountHolderName(validation.accountHolderName);
+    }
+    if (validation.normalizedId) {
+      setPhone(validation.normalizedId);
+    }
+
     if (await isNairaVerified()) {
       setStep('confirm');
       return;
@@ -266,7 +285,7 @@ export default function AirtimeScreen() {
         summary: `Airtime · ₦${ngn.toLocaleString('en-NG')} to ${phone}`,
       },
     });
-  }, [router, ngn, phone]);
+  }, [router, ngn, phone, provider]);
 
   const phoneValid = phoneDigits.length === 11 && phoneDigits.startsWith('0');
 
@@ -474,10 +493,10 @@ export default function AirtimeScreen() {
 
             <Pressable
               onPress={() => void continueFromForm()}
-              disabled={!phoneValid || ngn <= 0 || rateState !== 'ready'}
+              disabled={!phone.trim() || ngn <= 0 || rateState !== 'ready'}
               style={({ pressed }) => [
                 styles.primaryBtn,
-                (!phoneValid || ngn <= 0 || rateState !== 'ready') && styles.disabled,
+                (!phone.trim() || ngn <= 0 || rateState !== 'ready') && styles.disabled,
                 pressed && styles.pressed,
               ]}
             >
@@ -507,6 +526,12 @@ export default function AirtimeScreen() {
                 <Text style={styles.rowLabel}>Phone</Text>
                 <Text style={styles.rowValue}>{phoneDigits}</Text>
               </View>
+              {accountHolderName ? (
+                <View style={styles.row}>
+                  <Text style={styles.rowLabel}>Account holder</Text>
+                  <Text style={styles.rowValue}>{accountHolderName}</Text>
+                </View>
+              ) : null}
               <View style={styles.row}>
                 <Text style={styles.rowLabel}>Paid from</Text>
                 <Text style={styles.rowValue}>{code} balance</Text>
