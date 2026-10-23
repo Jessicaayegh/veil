@@ -298,20 +298,44 @@ export interface NairaCustomer {
   verified: boolean
   /** False when the customer already existed — provisioning is idempotent. */
   created: boolean
+  /**
+   * True when the reference that came back is not the one that was sent.
+   *
+   * Linq already had this person's email under a different reference and named
+   * it; the server adopted it rather than failing. The returned reference is
+   * the authoritative one from here on.
+   */
+  reusedExistingRef?: boolean
 }
 
 /**
  * One-time per person, not per order. Safe to call again after a dropped
  * response: Linq returns the existing customer with `created: false`.
+ *
+ * **The reference that comes back can differ from the one that went in.** If
+ * this person's email is already registered under another reference, Linq names
+ * it and the server adopts it. We then store that reference, because it is the
+ * one their identity is bound to — continuing with ours would mean every later
+ * KYC and order is refused, which is exactly the lockout this whole module is
+ * written to avoid.
+ *
+ * This is the one place a stored reference may be replaced. It is not a
+ * regenerated reference — it is Linq telling us which one is real.
  */
-export function provisionCustomer(params: {
+export async function provisionCustomer(params: {
   customerRef: string
   firstName: string
   lastName: string
   email: string
   phone: string
 }): Promise<NairaCustomer> {
-  return call<NairaCustomer>('/ngn/customers', { method: 'POST', body: params })
+  const customer = await call<NairaCustomer>('/ngn/customers', { method: 'POST', body: params })
+
+  if (customer.customerRef && customer.customerRef !== params.customerRef) {
+    walletLocal.setItem(CUSTOMER_REF_KEY, customer.customerRef)
+  }
+
+  return customer
 }
 
 export interface CustomerStatus {
@@ -473,6 +497,130 @@ export function getOnrampStatus(customerRef: string, orderId: string): Promise<O
     `/ngn/onramp/orders/${encodeURIComponent(orderId)}?customerRef=${encodeURIComponent(customerRef)}`,
   )
 }
+
+// ─── Bills ───────────────────────────────────────────────────────────────────
+
+export type BillCategory = 'airtime' | 'data' | 'electricity' | 'cabletv' | 'betting'
+
+export interface BillOrder {
+  id: string
+  customerRef: string
+  /** Where the wallet sends the crypto. Nothing is vended until it arrives. */
+  wallet: string
+  status: string
+}
+
+/**
+ * Reserve a bill and lock the rate.
+ *
+ * `refundAddress` is where the deposit goes if the biller rejects the top-up
+ * after the user has paid — a biller failing does not un-spend their XLM.
+ * It must be the classic `G…` account of a wallet the user controls.
+ */
+export function payBill(params: {
+  customerRef: string
+  billCategory: BillCategory
+  provider: string
+  /** The phone number for airtime, the meter number for electricity. */
+  customerId: string
+  amountNgn: number
+  amountStableCoin: number
+  rate: number
+  coin: NairaCoin
+  refundAddress: string
+}): Promise<BillOrder> {
+  return call<BillOrder>('/ngn/bills', { method: 'POST', body: params })
+}
+
+export interface BillStatus {
+  orderId: string
+  customerRef: string
+  status: string
+  billCategory: string
+  amountNgn: number
+  amountStableCoin: number
+  wallet: string
+  description: string
+  stale?: boolean
+  token?: string
+  prepaidToken?: string
+  units?: string
+}
+
+export function getBillStatus(customerRef: string, orderId: string): Promise<BillStatus> {
+  return call<BillStatus>(
+    `/ngn/bills/${encodeURIComponent(orderId)}?customerRef=${encodeURIComponent(customerRef)}`,
+  )
+}
+
+export interface MeterVerification {
+  valid: boolean
+  customerName?: string
+  accountHolderName?: string
+  address?: string
+  meterNumber?: string
+  disco?: string
+  meterType?: 'prepaid' | 'postpaid'
+  minimumAmount?: number
+  error?: string
+}
+
+export async function verifyMeter(params: {
+  disco: string
+  meterNumber: string
+  meterType?: 'prepaid' | 'postpaid'
+  customerRef?: string
+}): Promise<MeterVerification> {
+  return call<MeterVerification>('/ngn/bills/electricity/verify', {
+    method: 'POST',
+    body: params,
+  })
+}
+
+export interface BillCustomerLookup {
+  valid: boolean
+  customerName?: string
+  accountHolderName?: string
+  address?: string
+  meterNumber?: string
+  currentPackage?: string
+  dueDate?: string
+  meterType?: 'prepaid' | 'postpaid'
+  minimumAmount?: number
+  error?: string
+}
+
+export function lookupBillCustomer(params: {
+  billCategory: BillCategory | string
+  provider: string
+  customerId: string
+  customerRef?: string
+  meterType?: string
+}): Promise<BillCustomerLookup> {
+  return call<BillCustomerLookup>('/ngn/bills/lookup', {
+    method: 'POST',
+    body: params,
+  })
+}
+
+export type BillTerminalOutcome = 'done' | 'failed' | 'pending'
+
+/**
+ * Classifies a bill order status into terminal or in-flight states.
+ *
+ * The provider confirms the real success status is literally `completed`.
+ * We also recognize `complete`, `success`, and `delivered`.
+ * Failure statuses: `failed`, `refunded`, `reversed`, `cancelled`.
+ * All other / unrecognized statuses default to `pending` so requerying
+ * can settle them rather than assuming a false failure.
+ */
+export function classifyBillStatus(status: string): BillTerminalOutcome {
+  const s = status.trim().toLowerCase()
+  if (/complete|success|delivered/.test(s)) return 'done'
+  if (/fail|refund|revers|cancel/.test(s)) return 'failed'
+  return 'pending'
+}
+
 
 /** Whether the rails are open at all. USDC on purpose — the XLM rate additionally
  *  depends on a live order book, so asking for it would hide the whole naira
