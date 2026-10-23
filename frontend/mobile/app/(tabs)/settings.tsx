@@ -21,6 +21,7 @@ import { getWalletAddress, hasUsableWallet } from '../../lib/walletStore';
 import { getFeePayerAddress } from '../../lib/activity';
 import { fundWithFriendbot } from '../../lib/testnetWallet';
 import { isNairaKycMismatch, isNairaVerified } from '../../lib/onramp';
+import { fundWithFriendbot } from '../../lib/classicWallet';
 import {
   getNotifIncoming,
   getNotifOutgoing,
@@ -300,6 +301,15 @@ export default function SettingsScreen() {
     const address = await getWalletAddress();
     if (!address) {
       setNotice({ title: 'No wallet', message: 'Create a wallet first.', tone: 'error' });
+      return;
+    }
+    const network = getNetwork();
+    if (network.name !== 'testnet' || !network.friendbotUrl) {
+      setNotice({
+        title: 'Unavailable on mainnet',
+        message: 'Friendbot is testnet only. Send real XLM to fund accounts on mainnet.',
+        tone: 'error',
+      });
       return;
     }
     // Smart (C…) wallet: fund BOTH sides — the fee-payer G-account (classic
