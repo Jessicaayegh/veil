@@ -30,17 +30,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlowHeader } from '../../components/FlowHeader';
 import { useTheme } from '../../hooks/useTheme';
 import { BackupError, BackupTamperError } from '../../lib/backup';
+import { BackupError } from '../../lib/backup';
 import {
   exportBackupToFile,
-  pickBackupFile,
-  restoreFromFile,
   shareBackupFile,
   type BackupExport,
-  type PickedBackupFile,
-  type RestoreResult,
 } from '../../lib/backupFile';
 import type { ThemeColors } from '../../lib/theme';
 import { fontFamily } from '../../theme/typography';
+import { RestoreBackupPanel } from '../../components/RestoreBackupPanel';
 
 /**
  * Anything shorter is not worth the 210k PBKDF2 rounds standing behind it. The
@@ -95,6 +93,8 @@ export default function BackupScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
+      {mode === 'export' ? <ExportPanel /> : <RestoreBackupPanel requireSignerMatch={false} />}
+    </ScrollView>
   );
 }
 
