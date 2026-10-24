@@ -1,6 +1,9 @@
 # Veil mascot — direction
 
 _Written 2026-10-03. A direction, not a decision. Nothing here has been drawn yet._
+_Written 2026-10-03. Drawn 2026-10-06, twice — see **Round one** and **Round
+two** at the end. The direction below stands; the shape is settled, the aperture
+is not._
 
 ## Start from what exists
 
@@ -83,3 +86,115 @@ to do now than after it ships on an icon.
 Silhouette studies before anything else: hem length, taper rate, with and
 without any suggestion of eyes, rendered at 22px and large on `#0F0F0F`. The
 22px test is what kills most mascots, so it should come first rather than last.
+## Round one — drawn 2026-10-06
+
+Silhouette studies: <https://claude.ai/artifact/THHzrRWB9brFQ1UpFb1tUx> (private).
+Five artboards — the 22px test, the derivation, a hem x taper matrix, the
+aperture options, and a picker showing each in the real dashboard header.
+
+### What the drawing found
+
+**The mark already contains the figure.** The three bars' outer corners sit at
+(22,32) (74,32) / (28,50) (68,50) / (34,68) (62,68). A straight edge from
+(74,32) to (62,68) passes through all three: half-width 26, 20, 14 — the mark's
+52, 40 and 28, exactly. Dome that and close it with a hem and the figure is the
+mark's own outline, with no proportion invented. The taper constraint above is
+satisfied by construction rather than by eye.
+
+That is a sharper claim than "keep the taper" was. An earlier draft anchored the
+shoulders at y=36 and missed the middle bar by two pixels — at which point the
+figure is merely mark-*like*, which is much weaker. `mascotGeometry.ts` pins all
+three widths in a test so it cannot drift back.
+
+**The fade does not survive being shrunk.** At 22px the hem at 0.22 opacity on
+near-black is effectively invisible, so the faded figure reads shorter and
+rounder than the solid one — a different silhouette depending on the size it is
+drawn at, which is the one thing a mark cannot do. The mark itself escapes this
+because three detached bars still read as three bars however faint the last one
+is; a continuous body simply loses its hem. **So the figure is solid below 32px
+and fades above it.** That rule was not in the original direction and belongs in
+it.
+
+### Settled
+
+| Question | Decision |
+| --- | --- |
+| Taper | Logo-exact — the edge through all three bar corners |
+| Hem | At y=68, where the mark's own last bar ends |
+| Small sizes | Solid under 32px; the 1.0 / 0.5 / 0.22 fade above |
+
+### Open
+
+**The aperture.** Four candidates, all cloth *removed* rather than features
+added: none, two slits, one slot, a woven band of three. The picker board shows
+each at header size. This one is taste, and it carries the cultural weight, so
+it is not a decision to make from outside.
+
+### Built, deliberately unwired
+
+- `frontend/wallet/lib/mascotGeometry.ts` and
+  `frontend/mobile/lib/mascotGeometry.ts` — the shape, byte-identical, with a
+  parity test
+- `frontend/wallet/components/ui/VeilMascot.tsx` and
+  `frontend/mobile/components/VeilMascot.tsx` — `aperture` is a prop, so all
+  four render without another branch
+
+**Nothing user-facing imports either component.** The caution above still holds:
+a read from someone Nigerian whose judgement is trusted comes before an app
+icon, a store listing or marketing, and it is cheaper now than after it ships.
+
+## Round two — the first figure was a lightbulb
+
+Round one derived the outline from the mark's corners and domed over the top.
+Mathematically faithful, and it read as a **lightbulb**. The geometry was not
+wrong; a single convex curve simply is not fabric, whatever it is derived from.
+Worth writing down, because the derivation felt like enough and was not.
+
+Two changes fixed it, and both are load-bearing:
+
+- **The widest point is the shoulder, not the head.** The crown is 28 across —
+  the hem's width — and the cloth spreads out from it to the mark's full 52 at
+  y=32. A figure whose head is its widest part is a bulb.
+- **The hem is uneven.** Three scallops rather than one smooth belly. A smooth
+  edge reads as a solid object; a broken one reads as cloth hanging.
+
+Three candidates went up: hooded, peaked, layered. Hooded and layered both
+landed — and they turned out not to be alternatives.
+
+### Hooded and layered are one figure
+
+The layered version is the hooded outline with two seams cut **across** it,
+not three shapes stacked beside each other. The bands run the full width of the
+box and are clipped to the outline, so their union is exactly the silhouette:
+the detailed figure cannot grow a different edge from the plain one, however the
+seams are redrawn. The seams are scalloped like the hem, and carry the mark's
+own 1.0 / 0.5 / 0.22.
+
+So there is one figure with two levels of detail, which is what this doc already
+asked for — silhouette first, details only above about 64px:
+
+| Size | What it draws |
+| --- | --- |
+| under 64px | one solid shape |
+| 64px and up | the same outline, seamed |
+
+That replaces round one's solid-under-32px rule, for the same reason: a mark
+that gains and loses parts as it is resized is not one mark.
+
+### Still settled from round one
+
+The falling edge runs (74,32) to (62,68) and passes through all three bar
+widths exactly — 52 at y32, 40 at y50, 28 at y68. Tested, so it cannot drift.
+
+### Still open
+
+**The aperture.** Now to be judged against the hooded crown, which is 26 across
+at y=17 and 20 at y=12 — far less room than the bulb had. The four options are
+re-placed against it and the test measures the crown's own curve rather than
+extrapolating the body's taper, which would have passed an opening hanging off
+the edge.
+
+## Next step
+
+Pick an aperture against the hooded crown. Then the sway-and-settle motion
+study, and the read.

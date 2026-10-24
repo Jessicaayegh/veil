@@ -19,6 +19,9 @@ jest.mock('../network', () => ({
   hydrateNetwork: jest.fn(async () => undefined),
 }));
 
+jest.mock('../classicWallet', () => ({
+  fundWithFriendbot: jest.fn(async () => true),
+}));
 jest.mock('../testnetWallet', () => ({
   fundWithFriendbot: jest.fn(async () => true),
 }));

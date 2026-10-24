@@ -38,6 +38,7 @@ jest.mock('../network', () => ({
   getNetworkName: jest.fn(() => 'testnet'),
   hydrateNetwork: jest.fn(async () => undefined),
 }));
+jest.mock('../classicWallet', () => ({ fundWithFriendbot: jest.fn(async () => false) }));
 jest.mock('../testnetWallet', () => ({ fundWithFriendbot: jest.fn(async () => false) }));
 jest.mock('../walletBreadcrumbs', () => ({ writeBreadcrumbs: jest.fn(async () => undefined) }));
 jest.mock('../walletStore', () => ({

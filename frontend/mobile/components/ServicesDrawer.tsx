@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Alert,
   Dimensions,
   Easing,
   Modal,
@@ -19,7 +20,7 @@ import { fontFamily } from '../theme/typography';
 import { useRouter } from 'expo-router';
 
 import { VeilLogo } from './VeilLogo';
-import { BILL_SERVICES, type BillService } from './PayForGrid';
+import { BILL_SERVICES, getServiceAvailabilityMessage, type BillService } from './PayForGrid';
 
 const PANEL_WIDTH = Math.min(320, Dimensions.get('window').width * 0.84);
 
@@ -41,10 +42,9 @@ const FLING_CLOSE_VX = -0.5;
 /**
  * The services drawer, opened from the drape mark in the dashboard header.
  *
- * Everything Veil intends to offer but has not shipped lives here behind a
- * "coming soon" badge, so the Pay-for grid on the dashboard only ever shows
- * things that actually work. A tile that does nothing when tapped is worse
- * than one the user was told is not ready yet.
+ * Future services and categories the provider does not support are separated
+ * here, so the dashboard only shows flows that actually work. Unavailable rows
+ * explain their status when tapped.
  *
  * Services move between the two surfaces by flipping `status` in
  * BILL_SERVICES — there is no second list to keep in sync.
@@ -166,8 +166,9 @@ export function ServicesDrawer({
   );
 
   const live = services.filter((s) => s.status === 'live');
-  const soon = services.filter((s) => s.status !== 'live');
-  const ordered = [...live, ...soon];
+  const soon = services.filter((s) => s.status === 'soon');
+  const notPlanned = services.filter((s) => s.status === 'not-planned');
+  const ordered = [...live, ...soon, ...notPlanned];
 
   /**
    * Close, then navigate on the next tick.
@@ -240,20 +241,39 @@ export function ServicesDrawer({
               </>
             ) : null}
 
-            <Stagger anim={anim} index={live.length}>
-              <Text style={[styles.sectionLabel, live.length > 0 && styles.sectionLabelSpaced]}>
-                Coming soon
-              </Text>
-            </Stagger>
-            {soon.map((s) => (
-              <Stagger key={s.id} anim={anim} index={ordered.indexOf(s) + 1}>
-                <Row service={s} colors={colors} styles={styles} soon />
-              </Stagger>
-            ))}
+            {soon.length > 0 ? (
+              <>
+                <Stagger anim={anim} index={live.length + (live.length > 0 ? 1 : 0)}>
+                  <Text style={[styles.sectionLabel, live.length > 0 && styles.sectionLabelSpaced]}>
+                    Coming soon
+                  </Text>
+                </Stagger>
+                {soon.map((s) => (
+                  <Stagger key={s.id} anim={anim} index={ordered.indexOf(s) + 1}>
+                    <Row service={s} colors={colors} styles={styles} />
+                  </Stagger>
+                ))}
+              </>
+            ) : null}
+
+            {notPlanned.length > 0 ? (
+              <>
+                <Stagger anim={anim} index={ordered.indexOf(notPlanned[0])}>
+                  <Text style={[styles.sectionLabel, (live.length > 0 || soon.length > 0) && styles.sectionLabelSpaced]}>
+                    Not planned
+                  </Text>
+                </Stagger>
+                {notPlanned.map((s) => (
+                  <Stagger key={s.id} anim={anim} index={ordered.indexOf(s) + 1}>
+                    <Row service={s} colors={colors} styles={styles} />
+                  </Stagger>
+                ))}
+              </>
+            ) : null}
 
             <Stagger anim={anim} index={ordered.length + 1}>
               <Text style={styles.footnote}>
-                These arrive as each provider goes live. Nothing here is chargeable yet.
+                Upcoming services will appear when providers launch them. Unsupported bill categories are not planned, and nothing unavailable here can be charged.
               </Text>
             </Stagger>
           </ScrollView>
@@ -303,34 +323,44 @@ function Row({
   service,
   colors,
   styles,
-  soon = false,
   onPick,
 }: {
   service: BillService;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
-  soon?: boolean;
   /** Absent for a service with nowhere to go, which keeps the row inert. */
   onPick?: () => void;
 }) {
-  // A live row is a button; a "soon" row is a listing. The two looked identical
-  // and behaved identically — neither did anything — so the whole drawer read
-  // as decoration. `BillService` has carried a `route` the entire time.
-  const label = `${service.label}${soon ? ', coming soon' : ''}`;
+  const availability = service.status === 'live' ? null : service.status;
+  const statusLabel = availability === 'soon' ? 'coming soon' : 'not planned';
+  const badgeLabel = availability === 'soon' ? 'SOON' : 'NOT PLANNED';
+  // A live row is a button that goes somewhere; an unavailable one is a button
+  // that says why it is not there yet. `BillService` has carried a `route` the
+  // entire time, and the drawer used to render every row as inert decoration.
+  const press = onPick
+    ?? (availability
+      ? () =>
+          Alert.alert(
+            `${service.label} — ${statusLabel}`,
+            getServiceAvailabilityMessage(service),
+            [{ text: 'Got it' }],
+          )
+      : undefined);
+  const label = availability ? `${service.label}, ${statusLabel}. Tap for details.` : service.label;
   const inner = (
     <>
-      <View style={[styles.rowIcon, soon && styles.rowIconSoon]}>
-        <service.Icon size={18} color={soon ? colors.textMuted : colors.textPrimary} />
+      <View style={[styles.rowIcon, availability && styles.rowIconSoon]}>
+        <service.Icon size={18} color={availability ? colors.textMuted : colors.textPrimary} />
       </View>
       <View style={styles.rowText}>
-        <Text style={[styles.rowLabel, soon && styles.rowLabelSoon]}>{service.label}</Text>
+        <Text style={[styles.rowLabel, availability && styles.rowLabelSoon]}>{service.label}</Text>
         <Text style={styles.rowHint} numberOfLines={1}>
           {service.hint}
         </Text>
       </View>
-      {soon ? (
+      {availability ? (
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>SOON</Text>
+          <Text style={styles.badgeText}>{badgeLabel}</Text>
         </View>
       ) : null}
     </>
@@ -338,12 +368,12 @@ function Row({
 
   // Written out twice rather than through one `Wrapper` component, because the
   // two take different `style` types and sharing one JSX node meant passing a
-  // FUNCTION style to a View. Only Pressable resolves those, so on every "soon"
+  // FUNCTION style to a View. Only Pressable resolves those, so on every inert
   // row `styles.row` was dropped entirely — the icon, the text and the badge
   // fell into the default column layout with the badge stretched edge to edge.
   // A View that silently ignores an unsupported style prop gives no warning,
   // which is why it looked like a layout bug rather than a type one.
-  if (!onPick) {
+  if (!press) {
     return (
       <View style={styles.row} accessibilityLabel={label}>
         {inner}
@@ -353,7 +383,7 @@ function Row({
 
   return (
     <Pressable
-      onPress={onPick}
+      onPress={press}
       accessibilityRole="button"
       accessibilityLabel={label}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
