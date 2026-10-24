@@ -61,6 +61,7 @@ import { errorMessage } from '../lib/errorMessage';
 import { getAssetIssuer } from '../lib/assets';
 import { getFeePayerAddress } from '../lib/activity';
 import { NotEnoughToSend, previewSpendFee, spendAsset } from '../lib/spendAsset';
+import { isPasskeyCancellation } from '../lib/passkeyOutcome';
 import type { PlatformFee } from '../lib/platformFee';
 import {
   getBillStatus,
@@ -82,6 +83,7 @@ import {
   updateBillOrderStatus,
   type PersistedBillOrder,
 } from '../lib/billOrders';
+import { classifyBillPollStatus } from '../lib/billFlow';
 
 type Step = 'form' | 'confirm' | 'paying' | 'done' | 'failed';
 
@@ -247,6 +249,13 @@ export default function AirtimeScreen() {
           await updateBillOrderStatus(orderId, s.status);
           void refreshOrders();
         }
+        // One classifier for every bill screen. This used to be an inline
+        // regex that did not know "settled"/"disbursed" — the words Linq
+        // actually ends a vend with — so a delivered top-up never left this
+        // screen.
+        const outcome = classifyBillPollStatus(s.status);
+        if (outcome === 'done') setStep('done');
+        if (outcome === 'failed') setStep('failed');
       } catch (err) {
         // Silent *to the user*: a failed poll is nothing they can act on, and
         // the payment has already left, so an error here would read as if it
@@ -393,6 +402,13 @@ export default function AirtimeScreen() {
       setPayHash(hash);
     } catch (err) {
       setWaitingForPasskey(false);
+      // Back to the confirmation with the order intact and no red error: the
+      // user simply chose not to authorise, and no crypto left the wallet.
+      if (isPasskeyCancellation(err)) {
+        setError(null);
+        setStep('confirm');
+        return;
+      }
       if (err instanceof NotEnoughToSend) {
         setError(
           `This wallet holds ${err.available.toLocaleString('en-US', { maximumFractionDigits: 7 })} ${code}, less than this top-up needs.`,

@@ -22,6 +22,24 @@
  * - token: prepaid token where one was returned (especially for electricity)
  * - customerRef: Linq customer reference (needed to re-query /ngn/bills/:orderId)
  * - provider: e.g. 'MTN', 'IKEDC'
+ * `GET /ngn/bills/:orderId` exists, so the backend can answer about an order the
+ * app knows the ID of.
+ *
+ * ## What We Store
+ * - `category`: BillCategory ('airtime', 'data', 'electricity', 'cabletv', 'betting')
+ * - `identifier`: meter number, phone number, smartcard number, betting user ID
+ * - `amount`: NGN amount
+ * - `amountCrypto`: crypto / stablecoin amount spent
+ * - `asset`: coin used ('usdc', 'xlm')
+ * - `orderId`: Linq order ID
+ * - `status`: 'pending', 'completed', 'failed', 'unconfirmed'
+ * - `time`: Unix timestamp in ms
+ * - `token`: prepaid token where one was returned (especially for electricity)
+ * - `units`: units credited (e.g. '34.5 kWh')
+ * - `meterType`: 'prepaid' | 'postpaid'
+ * - `customerName`: verified customer name
+ * - `customerRef`: Linq customer reference (needed to re-query /ngn/bills/:orderId)
+ * - `provider`: e.g. 'IKEDC', 'MTN'
  *
  * ## What We MUST NEVER Store
  * No personal identity data. A meter number is a customer identifier; a NIN
@@ -52,6 +70,9 @@ export interface PersistedBillOrder {
   status: string;
   time: number;
   token?: string;
+  units?: string;
+  meterType?: 'prepaid' | 'postpaid';
+  customerName?: string;
 }
 
 export type BillOrderInput = {
@@ -67,6 +88,9 @@ export type BillOrderInput = {
   time?: number;
   token?: string;
   prepaidToken?: string;
+  units?: string;
+  meterType?: 'prepaid' | 'postpaid';
+  customerName?: string;
   [key: string]: unknown;
 };
 
@@ -75,6 +99,7 @@ export type BillOrderInput = {
  *
  * A meter number or phone number is the customer identifier for the bill.
  * NIN, BVN, names, email, and other personal data must NEVER be stored.
+ * NIN, BVN, password, and sensitive identity data must NEVER be stored.
  */
 export function sanitizeBillOrder(raw: BillOrderInput): PersistedBillOrder {
   const clean: PersistedBillOrder = {
@@ -99,6 +124,18 @@ export function sanitizeBillOrder(raw: BillOrderInput): PersistedBillOrder {
     clean.token = tokenVal.trim();
   }
 
+  if (typeof raw.units === 'string' && raw.units.trim()) {
+    clean.units = raw.units.trim();
+  }
+
+  if (raw.meterType === 'prepaid' || raw.meterType === 'postpaid') {
+    clean.meterType = raw.meterType;
+  }
+
+  if (typeof raw.customerName === 'string' && raw.customerName.trim()) {
+    clean.customerName = raw.customerName.trim();
+  }
+
   return clean;
 }
 
@@ -108,6 +145,7 @@ export function isTerminalStatus(status: string): boolean {
 }
 
 export async function getBillOrders(): Promise<PersistedBillOrder[]> {
+export async function getBillOrders(category?: BillCategory): Promise<PersistedBillOrder[]> {
   try {
     const raw = await AsyncStorage.getItem(BILL_ORDERS_KEY);
     if (!raw) return [];
@@ -116,6 +154,11 @@ export async function getBillOrders(): Promise<PersistedBillOrder[]> {
     return parsed
       .map((item) => sanitizeBillOrder(item as BillOrderInput))
       .sort((a, b) => b.time - a.time);
+    const list = parsed
+      .map((item) => sanitizeBillOrder(item as BillOrderInput))
+      .sort((a, b) => b.time - a.time);
+
+    return category ? list.filter((o) => o.category === category) : list;
   } catch (err) {
     console.warn('[billOrders] failed to read stored bill orders:', err);
     return [];
@@ -133,6 +176,9 @@ export async function saveBillOrder(order: BillOrderInput): Promise<PersistedBil
     if (!sanitized.token && existing[index].token) {
       sanitized.token = existing[index].token;
     }
+    if (!sanitized.units && existing[index].units) {
+      sanitized.units = existing[index].units;
+    }
     updated = [...existing];
     updated[index] = { ...existing[index], ...sanitized };
   } else {
@@ -147,6 +193,7 @@ export async function updateBillOrderStatus(
   orderId: string,
   status: string,
   token?: string,
+  units?: string,
 ): Promise<PersistedBillOrder | null> {
   const existing = await getBillOrders();
   const index = existing.findIndex((o) => o.orderId === orderId);
@@ -157,6 +204,7 @@ export async function updateBillOrderStatus(
     ...current,
     status,
     ...(token ? { token } : {}),
+    ...(units ? { units } : {}),
   };
 
   existing[index] = updatedOrder;
@@ -167,6 +215,15 @@ export async function updateBillOrderStatus(
 export async function getBillOrder(orderId: string): Promise<PersistedBillOrder | null> {
   const orders = await getBillOrders();
   return orders.find((o) => o.orderId === orderId) ?? null;
+}
+
+/**
+ * Retrieve a prepaid token for an order.
+ * Returns null if the order doesn't exist or has no token.
+ */
+export async function retrieveBillToken(orderId: string): Promise<string | null> {
+  const order = await getBillOrder(orderId);
+  return order?.token ?? null;
 }
 
 export async function clearBillOrders(): Promise<void> {
@@ -182,6 +239,7 @@ export interface RecheckOptions {
  * pending when the app closed resolves rather than staying pending forever.
  *
  * Non-terminal orders are re-checked on next open.
+ * Non-terminal orders are re-checked on open.
  */
 export async function recheckPendingBillOrders(
   options?: RecheckOptions,
@@ -204,12 +262,20 @@ export async function recheckPendingBillOrders(
       const newToken = statusRes.token ?? statusRes.prepaidToken ?? order.token;
 
       if (newStatus !== order.status || (newToken && newToken !== order.token)) {
+      const newUnits = statusRes.units ?? order.units;
+
+      if (
+        newStatus !== order.status ||
+        (newToken && newToken !== order.token) ||
+        (newUnits && newUnits !== order.units)
+      ) {
         const idx = updatedOrders.findIndex((o) => o.orderId === order.orderId);
         if (idx >= 0) {
           updatedOrders[idx] = {
             ...updatedOrders[idx],
             status: newStatus,
             ...(newToken ? { token: newToken } : {}),
+            ...(newUnits ? { units: newUnits } : {}),
           };
           hasUpdates = true;
         }
