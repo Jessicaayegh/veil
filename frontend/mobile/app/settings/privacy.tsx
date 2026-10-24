@@ -121,7 +121,7 @@ function CrashReportOptIn() {
           value={enabled}
           onValueChange={toggle}
           testID="crash-reports-toggle"
-          trackColor={{ false: colors.borderStrong, true: colors.accent }}
+          trackColor={{ false: colors.border, true: colors.accent }}
         />
       </View>
     </View>

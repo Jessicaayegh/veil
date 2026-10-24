@@ -32,13 +32,20 @@ const STELLAR_ADDRESS_RE = /\bG[A-Z2-7]{55}\b/g;
 const STELLAR_SECRET_RE = /\bS[A-Z2-7]{55}\b/g;
 // Amounts followed by a known asset code.
 const AMOUNT_RE = /\b\d+(\.\d+)?\s+(XLM|USDC|BTC|ETH|xlm|usdc|btc|eth)\b/g;
+// An eleven-digit run: a Nigerian NIN, and also a Nigerian phone number. Both
+// are personal data under the NDPA, and the KYC and cash-out screens handle
+// both — a crash while verifying is exactly when one would be in a message.
+// Deliberately broad: over-scrubbing a crash report costs a little context,
+// under-scrubbing one sends an identity document to a third party.
+const ELEVEN_DIGIT_RE = /\b\d{11}\b/g;
 
-/** Rewrite wallet data out of any string headed for Sentry. */
+/** Rewrite wallet and personal data out of any string headed for Sentry. */
 export function scrubString(value: string): string {
   return value
     .replace(STELLAR_SECRET_RE, '[secret]')
     .replace(STELLAR_ADDRESS_RE, '[address]')
-    .replace(AMOUNT_RE, '[amount]');
+    .replace(AMOUNT_RE, '[amount]')
+    .replace(ELEVEN_DIGIT_RE, '[redacted]');
 }
 
 type SentryEvent = Parameters<NonNullable<Parameters<typeof Sentry.init>[0]['beforeSend']>>[0];
