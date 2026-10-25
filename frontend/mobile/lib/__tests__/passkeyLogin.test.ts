@@ -42,9 +42,6 @@ jest.mock('../walletBreadcrumbs', () => ({
 }));
 // `sdkStorage` is deliberately NOT mocked: letting it run keeps these
 // assertions pinned to the real per-network key names the SDK adapter writes.
-jest.mock('../network', () => ({
-  getNetworkName: () => mockGetNetworkName(),
-  hydrateNetwork: jest.fn(async () => undefined),
 const mockFetchContractOrigin = jest.fn<Promise<string | null>, [string, string | null]>(async () => null);
 jest.mock('../platformLimitation', () => {
   const actual = jest.requireActual('../platformLimitation');
@@ -57,6 +54,7 @@ jest.mock('../platformLimitation', () => {
 jest.mock('../network', () => ({
   getNetworkName: () => mockGetNetworkName(),
   getNetwork: () => ({ rpcUrl: 'https://soroban-testnet.stellar.org' }),
+  hydrateNetwork: jest.fn(async () => undefined),
 }));
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,

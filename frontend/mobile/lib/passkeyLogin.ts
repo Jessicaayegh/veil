@@ -7,7 +7,6 @@ import { recordFeePayerSource } from './feePayerSource';
 import { discoverWithPrf, nativePrfEvaluator, type DiscoveredPasskey } from './passkey';
 import { SDK_ADDRESS, SDK_KEY_ID, SDK_PUBLIC_KEY, getSdkItem, setSdkItems } from './sdkStorage';
 import { getNetwork, getNetworkName } from './network';
-import { discoverWithPrf, nativePrfEvaluator, type DiscoveredPasskey } from './passkey';
 // TODO(#1003): remove platform limitation warning when multi-origin contract ships
 import {
   fetchContractOrigin,
@@ -148,9 +147,12 @@ export async function loginWithPasskey(): Promise<LoginResult> {
   // but it is better than refusing the sign-in, since the smart wallet's own
   // balance belongs to the passkey and only needs some gas to move.
   const feePayer = prfFeePayer ?? Keypair.random();
+
   // ── Verify platform compatibility ──
+  // A wallet deployed from web carries a web origin that cannot
+  // be signed from the native app until multi-origin check_auth ships (#1003).
   // TODO(#1003): remove platform limitation check when multi-origin contract ships
-  const contractOrigin = await fetchContractOrigin(getActiveRpcUrl(), crumbs.walletAddress);
+  const contractOrigin = await fetchContractOrigin(getActiveRpcUrl(), resolved.address);
   if (contractOrigin && isWrongPlatformOrigin(contractOrigin)) {
     throw new Error(WRONG_PLATFORM_ERROR_MESSAGE);
   }

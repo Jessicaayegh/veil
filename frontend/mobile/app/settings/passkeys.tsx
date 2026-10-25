@@ -101,7 +101,6 @@ export default function PasskeysScreen() {
     }
   }, [walletAddress]);
   const [add, setAdd] = useState<AddState>({ kind: 'idle' });
-  const [thisDeviceKey, setThisDeviceKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setState({ kind: 'loading' });
