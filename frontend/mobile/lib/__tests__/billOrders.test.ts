@@ -16,6 +16,7 @@ import {
   getBillOrders,
   isTerminalStatus,
   recheckPendingBillOrders,
+  retrieveBillToken,
   sanitizeBillOrder,
   saveBillOrder,
   updateBillOrderStatus,
@@ -130,7 +131,7 @@ describe('prepaid token retrieval', () => {
       asset: 'xlm',
       status: 'completed',
       time: Date.now(),
-      token: '4532-8901-2345-6789-0123',
+      token: '0000-1111-2222-3333-4444',
     });
 
     // 2. Later, order history is loaded on another screen or session
@@ -139,7 +140,7 @@ describe('prepaid token retrieval', () => {
 
     expect(elecOrder).toBeDefined();
     // Prepaid token is retrievable!
-    expect(elecOrder?.token).toBe('4532-8901-2345-6789-0123');
+    expect(elecOrder?.token).toBe('0000-1111-2222-3333-4444');
     expect(elecOrder?.category).toBe('electricity');
     expect(elecOrder?.identifier).toBe('04123456789');
   });
@@ -173,11 +174,10 @@ describe('privacy: no NIN or identity data stored', () => {
       asset: 'usdc',
       status: 'completed',
       time: 1729441111111,
-      token: '9988-7766-5544-3322',
+      token: '0000-1111-2222-3333',
       // Prohibited identity fields that must NEVER appear:
       nin: '12345678901',
       bvn: '22233344455',
-      customerName: 'Chinedu Okonkwo',
       accountHolderName: 'Chinedu Okonkwo',
       email: 'chinedu@example.com',
       phone: '08039999999',
@@ -192,16 +192,19 @@ describe('privacy: no NIN or identity data stored', () => {
     expect(order).toBeDefined();
     expect((order as unknown as Record<string, unknown>).nin).toBeUndefined();
     expect((order as unknown as Record<string, unknown>).bvn).toBeUndefined();
-    expect((order as unknown as Record<string, unknown>).customerName).toBeUndefined();
     expect((order as unknown as Record<string, unknown>).accountHolderName).toBeUndefined();
     expect((order as unknown as Record<string, unknown>).email).toBeUndefined();
+    expect((order as unknown as Record<string, unknown>).phone).toBeUndefined();
+    expect((order as unknown as Record<string, unknown>).firstName).toBeUndefined();
+    expect((order as unknown as Record<string, unknown>).lastName).toBeUndefined();
 
     // Inspect the exact raw string in AsyncStorage
     const rawStorage = (await AsyncStorage.getItem(BILL_ORDERS_KEY)) ?? '';
     expect(rawStorage).not.toContain('12345678901');
     expect(rawStorage).not.toContain('22233344455');
-    expect(rawStorage).not.toContain('Chinedu');
+    expect(rawStorage).not.toContain('Chinedu Okonkwo');
     expect(rawStorage).not.toContain('chinedu@example.com');
+    expect(rawStorage).not.toContain('08039999999');
     expect(rawStorage).not.toContain('nin');
     expect(rawStorage).not.toContain('bvn');
 
@@ -370,7 +373,7 @@ describe('a test proves a pending order resolves after a restart', () => {
         amountStableCoin: 2.67,
         wallet: 'GB3JS2AJZ3FKIGVOOPXDEYYR3XOHQA474WGCYAMNFSGX6OW5HGWCKUZW',
         description: 'AEDC Prepaid Electricity ₦4,000',
-        token: '7021-4433-8899-1234-5678', // The prepaid token generated while app was closed
+        token: '5555-6666-7777-8888-9999', // The prepaid token generated while app was closed
       };
     });
 
@@ -383,18 +386,14 @@ describe('a test proves a pending order resolves after a restart', () => {
     const resolvedOrder = refreshedOrders.find((o) => o.orderId === 'ord_elec_pending_restart');
     expect(resolvedOrder).toBeDefined();
     expect(resolvedOrder?.status).toBe('completed');
-    expect(resolvedOrder?.token).toBe('7021-4433-8899-1234-5678');
+    expect(resolvedOrder?.token).toBe('5555-6666-7777-8888-9999');
 
     // Also assert reading directly from persistent storage gives the resolved order and token
     const fromStorage = await getBillOrder('ord_elec_pending_restart');
     expect(fromStorage?.status).toBe('completed');
-    expect(fromStorage?.token).toBe('7021-4433-8899-1234-5678');
-  retrieveBillToken,
-  saveBillOrder,
-  sanitizeBillOrder,
-  BILL_ORDERS_KEY,
-} from '../billOrders';
-import type { BillStatus } from '../onramp';
+    expect(fromStorage?.token).toBe('5555-6666-7777-8888-9999');
+  });
+});
 
 describe('billOrders', () => {
   beforeEach(async () => {

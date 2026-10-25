@@ -62,14 +62,14 @@ describe('bill order persistence & re-query readiness (wallet)', () => {
       asset: 'xlm',
       status: 'completed',
       time: Date.now(),
-      token: '4532-8901-2345-6789-0123',
+      token: '0000-1111-2222-3333-4444',
     })
 
     const orders = getBillOrders()
     const elecOrder = orders.find((o) => o.orderId === 'ord_elec_web_token')
 
     expect(elecOrder).toBeDefined()
-    expect(elecOrder?.token).toBe('4532-8901-2345-6789-0123')
+    expect(elecOrder?.token).toBe('0000-1111-2222-3333-4444')
   })
 
   it('strips NIN, BVN, names, and contact details from storage', () => {
@@ -82,7 +82,7 @@ describe('bill order persistence & re-query readiness (wallet)', () => {
       amount: 3000,
       asset: 'usdc',
       status: 'completed',
-      token: '9988-7766-5544-3322',
+      token: '0000-1111-2222-3333',
       nin: '12345678901',
       bvn: '22233344455',
       customerName: 'Chinedu Okonkwo',
@@ -118,7 +118,7 @@ describe('bill order persistence & re-query readiness (wallet)', () => {
         amountStableCoin: 2.67,
         wallet: 'GB3JS2AJZ3FKIGVOOPXDEYYR3XOHQA474WGCYAMNFSGX6OW5HGWCKUZW',
         description: 'AEDC Prepaid Electricity',
-        token: '7021-4433-8899-1234-5678',
+        token: '5555-6666-7777-8888-9999',
       }
     })
 
@@ -126,6 +126,6 @@ describe('bill order persistence & re-query readiness (wallet)', () => {
     const resolved = resolvedOrders.find((o) => o.orderId === 'ord_restart_wallet')
 
     expect(resolved?.status).toBe('completed')
-    expect(resolved?.token).toBe('7021-4433-8899-1234-5678')
+    expect(resolved?.token).toBe('5555-6666-7777-8888-9999')
   })
 })

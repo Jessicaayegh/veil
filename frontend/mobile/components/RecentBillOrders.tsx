@@ -223,29 +223,27 @@ function createStyles(colors: ThemeColors) {
       marginBottom: 12,
     },
     sectionTitle: {
-      fontFamily: fontFamily.mono,
+      fontFamily: fontFamily.accent,
       fontSize: 11,
       letterSpacing: 1.2,
       color: colors.textSecondary,
-      fontWeight: '600',
     },
     refreshBtn: {
       paddingHorizontal: 8,
       paddingVertical: 4,
     },
     refreshText: {
-      fontFamily: fontFamily.sans,
+      fontFamily: fontFamily.bodyMedium,
       fontSize: 12,
       color: colors.accent,
-      fontWeight: '500',
     },
     list: {
       gap: 12,
     },
     orderCard: {
-      backgroundColor: colors.surfaceSm,
+      backgroundColor: colors.surface,
       borderWidth: 1,
-      borderColor: colors.borderDim,
+      borderColor: colors.border,
       borderRadius: 14,
       padding: 14,
     },
@@ -272,14 +270,14 @@ function createStyles(colors: ThemeColors) {
       flex: 1,
     },
     providerText: {
-      fontFamily: fontFamily.mono,
+      fontFamily: fontFamily.address,
       fontSize: 11,
       color: colors.textSecondary,
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
     identifierText: {
-      fontFamily: fontFamily.mono,
+      fontFamily: fontFamily.address,
       fontSize: 13,
       fontWeight: '600',
       color: colors.textPrimary,
@@ -289,13 +287,13 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'flex-end',
     },
     amountNgn: {
-      fontFamily: fontFamily.sans,
+      fontFamily: fontFamily.bodySemiBold,
       fontSize: 14,
       fontWeight: '700',
       color: colors.textPrimary,
     },
     amountCrypto: {
-      fontFamily: fontFamily.mono,
+      fontFamily: fontFamily.address,
       fontSize: 11,
       color: colors.accent,
       marginTop: 1,
@@ -307,7 +305,7 @@ function createStyles(colors: ThemeColors) {
       marginTop: 10,
       paddingTop: 8,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.borderDim,
+      borderTopColor: colors.border,
     },
     statusBadgeWrap: {
       flexDirection: 'row',
@@ -320,30 +318,30 @@ function createStyles(colors: ThemeColors) {
       borderRadius: 3,
     },
     statusDotSuccess: {
-      backgroundColor: colors.success,
+      backgroundColor: colors.positive,
     },
     statusDotPending: {
       backgroundColor: colors.accent,
     },
     statusDotFailed: {
-      backgroundColor: colors.error,
+      backgroundColor: colors.danger,
     },
     statusText: {
-      fontFamily: fontFamily.sans,
+      fontFamily: fontFamily.bodyMedium,
       fontSize: 11,
       fontWeight: '500',
     },
     statusTextSuccess: {
-      color: colors.success,
+      color: colors.positive,
     },
     statusTextPending: {
       color: colors.accent,
     },
     statusTextFailed: {
-      color: colors.error,
+      color: colors.danger,
     },
     timeText: {
-      fontFamily: fontFamily.mono,
+      fontFamily: fontFamily.address,
       fontSize: 11,
       color: colors.textMuted,
     },
@@ -352,7 +350,7 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.surfaceMd,
       borderRadius: 10,
       borderWidth: 1,
-      borderColor: colors.borderMedium,
+      borderColor: colors.border,
       padding: 10,
     },
     tokenHeader: {
@@ -362,11 +360,10 @@ function createStyles(colors: ThemeColors) {
       marginBottom: 4,
     },
     tokenEyebrow: {
-      fontFamily: fontFamily.mono,
+      fontFamily: fontFamily.accent,
       fontSize: 10,
       letterSpacing: 1,
       color: colors.textSecondary,
-      fontWeight: '600',
     },
     copyBtn: {
       flexDirection: 'row',
@@ -375,24 +372,24 @@ function createStyles(colors: ThemeColors) {
       paddingHorizontal: 8,
       paddingVertical: 2,
       borderRadius: 6,
-      backgroundColor: colors.surfaceSm,
+      backgroundColor: colors.surface,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.borderDim,
+      borderColor: colors.border,
     },
     copyBtnText: {
-      fontFamily: fontFamily.sans,
+      fontFamily: fontFamily.bodyMedium,
       fontSize: 11,
       color: colors.textSecondary,
       fontWeight: '500',
     },
     copyBtnTextSuccess: {
-      fontFamily: fontFamily.sans,
+      fontFamily: fontFamily.bodySemiBold,
       fontSize: 11,
       color: colors.accent,
       fontWeight: '600',
     },
     tokenValue: {
-      fontFamily: fontFamily.mono,
+      fontFamily: fontFamily.address,
       fontSize: 14,
       fontWeight: '700',
       color: colors.accent,
@@ -406,7 +403,7 @@ function createStyles(colors: ThemeColors) {
       borderRadius: 8,
     },
     tokenWaitingText: {
-      fontFamily: fontFamily.sans,
+      fontFamily: fontFamily.body,
       fontSize: 11,
       color: colors.textMuted,
       fontStyle: 'italic',

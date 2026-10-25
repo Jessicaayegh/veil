@@ -992,14 +992,14 @@ function createStyles(colors: ThemeColors) {
 
     tokenDisplay: {
       color: colors.accent,
-      fontFamily: fontFamily.mono,
+      fontFamily: fontFamily.address,
       fontSize: 16,
       fontWeight: '700',
       letterSpacing: 1.2,
       marginVertical: 6,
     },
     copyTokenBtn: {
-      backgroundColor: colors.surfaceSm,
+      backgroundColor: colors.surface,
       borderColor: colors.border,
       borderWidth: StyleSheet.hairlineWidth,
       borderRadius: 8,

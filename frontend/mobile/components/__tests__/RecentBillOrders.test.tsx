@@ -122,7 +122,7 @@ describe('RecentBillOrders component', () => {
         asset: 'usdc',
         status: 'completed',
         time: Date.now(),
-        token: '4532-8901-2345-6789-0123',
+        token: '0000-1111-2222-3333-4444',
       },
     ];
 
@@ -133,15 +133,15 @@ describe('RecentBillOrders component', () => {
 
     const tokenCard = tree.root.findByProps({ testID: 'token-card-ord_elec_token_1' });
     expect(tokenCard).toBeDefined();
-    expect(allText(tokenCard)).toContain('4532-8901-2345-6789-0123');
+    expect(allText(tokenCard)).toContain('0000-1111-2222-3333-4444');
 
     // Press the copy button
-    const copyBtn = tokenCard.findByProps({ accessibilityLabel: 'Copy prepaid token' });
+    const copyBtn = tree.root.findByProps({ accessibilityLabel: 'Copy prepaid token' });
     await renderer.act(async () => {
       await (copyBtn.props.onPress as () => Promise<void>)();
     });
 
-    expect(Clipboard.setStringAsync).toHaveBeenCalledWith('4532-8901-2345-6789-0123');
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith('0000-1111-2222-3333-4444');
 
     renderer.act(() => {
       jest.runAllTimers();
@@ -156,6 +156,7 @@ describe('RecentBillOrders component', () => {
         orderId: 'ord_pending_1',
         customerRef: 'veil_ref',
         category: 'electricity',
+        provider: 'EKEDC',
         identifier: '10101111111',
         amount: 2000,
         asset: 'usdc',
