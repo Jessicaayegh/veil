@@ -619,8 +619,6 @@ export interface BillCustomerLookup {
   dueDate?: string;
   address?: string;
   meterNumber?: string;
-  currentPackage?: string;
-  dueDate?: string;
   meterType?: 'prepaid' | 'postpaid';
   minimumAmount?: number;
   error?: string;
