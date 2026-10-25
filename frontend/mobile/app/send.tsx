@@ -27,6 +27,12 @@ import { validateMemoText } from '../lib/memo';
 import { validateMemo } from '../lib/sep7';
 import { truncateAddress } from '../components/ui/AddressChip';
 import { getWalletAddress } from '../lib/walletStore';
+// TODO(#1003): remove platform limitation warning when multi-origin contract ships
+import {
+  FIRST_SPEND_LIMITATION_MESSAGE,
+  isFirstSpend,
+  markFirstSpendCompleted,
+} from '../lib/platformLimitation';
 import { loadHoldings, unitPrice, type Holding } from '../lib/holdings';
 import { getNetworkName } from '../lib/network';
 import { isRegistryCode, resolveRequestedAsset } from '../lib/requestedAsset';
@@ -95,6 +101,8 @@ export default function SendScreen() {
   const [step, setStep] = useState<Step>('form');
   const [hash, setHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // TODO(#1003): remove platform limitation warning when multi-origin contract ships
+  const [isFirst, setIsFirst] = useState(false);
 
   // Load the account's real holdings for the asset selector.
   // Smart-wallet source: when the wallet is a C-address holding its own XLM,
@@ -122,6 +130,10 @@ export default function SendScreen() {
         if (alive) setHoldingsLoaded(true);
         return;
       }
+      // TODO(#1003): remove platform limitation check when multi-origin contract ships
+      isFirstSpend(address).then((first) => {
+        if (alive) setIsFirst(first);
+      }).catch(() => {});
       if (address.startsWith('C')) {
         if (alive) setContractAddr(address);
       }
@@ -331,6 +343,8 @@ export default function SendScreen() {
           const hash = await sendAssetFromContract(stored, recipient.trim(), amount, spendAsset);
           setHash(hash);
           setStep('done');
+          // TODO(#1003): remove platform limitation call when multi-origin contract ships
+          void markFirstSpendCompleted(stored);
           return;
         }
         // Only an explicit "Smart wallet" choice is an error when the contract
@@ -374,6 +388,8 @@ export default function SendScreen() {
       );
       setHash(result.hash);
       setStep('done');
+      // TODO(#1003): remove platform limitation call when multi-origin contract ships
+      void markFirstSpendCompleted(stored);
     } catch (err) {
       // A dismissed prompt is a decision, not a failure. Put the user back on
       // the form they filled in, with no red banner and nothing submitted.
@@ -641,7 +657,17 @@ export default function SendScreen() {
             <Text style={styles.ctaText}>{step === 'authorizing' ? 'Waiting for passkey…' : 'Submitting…'}</Text>
           </View>
         ) : canSubmit ? (
-          <SlideToConfirm label="Slide to send" onConfirm={handleSend} testID="send-submit" />
+          <>
+            {/* TODO(#1003): remove platform limitation warning when multi-origin contract ships */}
+            {isFirst && (
+              <View testID="first-spend-limitation-notice" style={styles.firstSpendNotice}>
+                <Text style={styles.firstSpendNoticeText}>
+                  {FIRST_SPEND_LIMITATION_MESSAGE}
+                </Text>
+              </View>
+            )}
+            <SlideToConfirm label="Slide to send" onConfirm={handleSend} testID="send-submit" />
+          </>
         ) : (
           <View
             style={[styles.cta, styles.disabled]}
@@ -861,4 +887,20 @@ const createStyles = (colors: ThemeColors) =>
     sheetTitle: { color: colors.textFaint, fontFamily: fontFamily.bodySemiBold, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 },
     sheetRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
     sheetBal: { color: colors.textPrimary, fontFamily: fontFamily.address, fontSize: 14 },
+    firstSpendNotice: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      borderRadius: 14,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      marginBottom: 14,
+    },
+    firstSpendNoticeText: {
+      color: colors.accent,
+      fontFamily: fontFamily.body,
+      fontSize: 12,
+      lineHeight: 18,
+      textAlign: 'center',
+    },
   });
