@@ -97,6 +97,11 @@
         "default": "./dist/esm/angular/index.js"
       }
     },
+    "./stellar-wallets-kit": {
+      "types": "./dist/stellarWalletsKit.d.ts",
+      "react-native": "./src/stellarWalletsKit.ts",
+      "default": "./dist/stellarWalletsKit.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
