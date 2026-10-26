@@ -98,8 +98,15 @@
       }
     },
     "./stellar-wallets-kit": {
-      "types": "./dist/stellarWalletsKit.d.ts",
       "react-native": "./src/stellarWalletsKit.ts",
+      "import": {
+        "types": "./dist/esm/stellarWalletsKit.d.ts",
+        "default": "./dist/esm/stellarWalletsKit.js"
+      },
+      "require": {
+        "types": "./dist/stellarWalletsKit.d.ts",
+        "default": "./dist/stellarWalletsKit.js"
+      },
       "default": "./dist/stellarWalletsKit.js"
     },
     "./package.json": "./package.json"
