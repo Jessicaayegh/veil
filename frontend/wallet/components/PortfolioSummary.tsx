@@ -24,9 +24,17 @@ import { AlertTriangle } from 'lucide-react'
 // Holdings that accrue through price rather than balance, where a manually
 // recorded USDC cost can express the yield. Matched by code AND issuer, so a
 // counterfeit token of the same code never inherits someone's basis.
+//
+// Returns the ISSUER, which is what the storage key is built from. That is
+// deliberate and not interchangeable with the code: keys written before USDY
+// existed are `…:${issuer}`, so keying by code instead would read an empty slot
+// and silently show "unknown" to everyone who had already recorded a USTRY
+// cost. The pairing above is what keeps a counterfeit out, so the issuer alone
+// is a safe key — a collision would need one issuer to mint two assets on this
+// list, which adding to this allowlist would make obvious.
 function recordedBasisIssuer(code: string, issuer: string | null): string | null {
-  if (issuer === ETHERFUSE_MAINNET_ISSUER && code === 'USTRY') return code
-  if (issuer === USDY_MAINNET_ISSUER && code === 'USDY') return code
+  if (issuer === ETHERFUSE_MAINNET_ISSUER && code === 'USTRY') return issuer
+  if (issuer === USDY_MAINNET_ISSUER && code === 'USDY') return issuer
   return null
 }
 
